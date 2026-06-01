@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Etsy Drive & PDF Aracı</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --border: #e2ddd5;
+    --accent: #d45a2a;
+    --accent-light: #fdf0ea;
+    --text: #1a1a18;
+    --muted: #7a7870;
+    --success: #2d7a4f;
+    --success-bg: #edf7f2;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
+  }
+  body {
+    font-family: 'Georgia', serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .app {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+  }
+  header p {
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-style: italic;
+  }
+  .badge {
+    display: inline-block;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-family: monospace;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+    font-style: normal;
+  }
+  .step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow);
+    transition: border-color 0.2s;
+  }
+  .step-card.active { border-color: var(--accent); }
+  .step-card.done { border-color: #a8d5bb; }
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+  }
+  .step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-family: monospace;
+  }
+  .step-card.done .step-num {
+    background: var(--success-bg);
+    color: var(--success);
+  }
+  .step-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    font-family: -apple-system, sans-serif;
+  }
+  .step-sub {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: 2px;
+    font-family: -apple-system, sans-serif;
+  }
+
+  /* Auth */
+  #client-id-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  input[type="text"], input[type="password"] {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: monospace;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    min-width: 0;
+  }
+  input:focus { border-color: var(--accent); }
+  button {
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    font-family: -apple-system, sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    border: 1px solid transparent;
+  }
+  button:active { transform: scale(0.98); }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { background: #b84d22; }
+  .btn-primary:disabled { background: #ccc; border-color: #ccc; cursor: not-allowed; }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover { background: var(--bg); }
+  .info-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+    font-family: -apple-system, sans-serif;
+    line-height: 1.5;
+  }
+  .info-box a { color: var(--accent); }
+  .success-box {
+    background: var(--success-bg);
+    border: 1px solid #a8d5bb;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 0.88rem;
+    color: var(--success);
+    font-family: -apple-system, sans-serif;
+    word-break: break-all;
+  }
+  .error-box {
+    background: #fdf0ea;
+    border: 1px solid #f0b89a;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-family: -apple-system, sans-serif;
+    margin-top: 8px;
+  }
+
+  /* Dropzone */
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    font-family: -apple-system, sans-serif;
+  }
+  .dropzone:hover, .dropzone.over {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .dropzone input { display: none; }
+  .dropzone-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .dropzone p { font-size: 0.9rem; color: var(--muted); }
+  .dropzone strong { color: var(--text); }
+
+  /* Preview grid */
+  #preview-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 1rem;
+  }
+  .preview-thumb {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .preview-thumb img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .preview-thumb .status-badge {
+    position: absolute;
+    bottom: 3px; left: 3px;
+    font-size: 0.65rem;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-weight: 600;
+  }
+  .status-pending { background: #fff8e1; color: #a06800; }
+  .status-uploading { background: #e3f2fd; color: #1565c0; }
+  .status-done { background: var(--success-bg); color: var(--success); }
+  .status-error { background: #fde8e8; color: #c62828; }
+
+  /* Result list */
+  #results-list {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .result-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: -apple-system, sans-serif;
+  }
+  .result-item img { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; }
+  .result-name { font-size: 0.82rem; color: var(--muted); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result-link { font-size: 0.8rem; color: var(--accent); text-decoration: none; word-break: break-all; }
+  .copy-btn { font-size: 0.75rem; padding: 4px 8px; white-space: nowrap; }
+
+  /* PDF section */
+  #pdf-config { margin-top: 0.75rem; }
+  .config-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0.6rem;
+    font-family: -apple-system, sans-serif;
+    font-size: 0.88rem;
+  }
+  .config-row label { min-width: 130px; color: var(--muted); }
+  .config-row input[type="number"] {
+    width: 70px;
+    flex: none;
+    font-family: -apple-system, sans-serif;
+  }
+  select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    font-size: 0.88rem;
+    font-family: -apple-system, sans-serif;
+    color: var(--text);
+    outline: none;
+  }
+  select:focus { border-color: var(--accent); }
+
+  .url-input-row { display: flex; gap: 8px; margin-bottom: 0.75rem; }
+  .url-input-row input { flex: 1; }
+
+  #qr-preview { margin-top: 8px; }
+
+  .dl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1rem;
+    padding: 11px 24px;
+    margin-top: 1rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Progress bar */
+  .progress-bar-wrap {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 8px 0;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s;
+    width: 0%;
+  }
+
+  .hidden { display: none !important; }
+  .row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+  .tag { display: inline-block; background: var(--accent-light); color: var(--accent); font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; font-family: monospace; margin-right: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div class="badge">Etsy • Drive • PDF</div>
+  <h1>Görsel → Drive → PDF</h1>
+  <p>Görselleri Drive'a yükle, linki & QR kodu PDF'e ekle, Etsy'e yükle.</p>
+</header>
+
+<!-- STEP 1: Google Auth -->
+<div class="step-card active" id="card-auth">
+  <div class="step-header">
+    <div class="step-num" id="num-auth">1</div>
+    <div>
+      <div class="step-title">Google Drive Bağlantısı</div>
+      <div class="step-sub">OAuth 2.0 ile giriş yap</div>
+    </div>
+  </div>
+  <div class="info-box">
+    Bu araç tamamen tarayıcınızda çalışır. Verileriniz hiçbir sunucuya gönderilmez.<br><br>
+    <strong>Client ID almak için:</strong> <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a> → Credentials → OAuth 2.0 Client ID (Web application) oluştur. <em>Authorized JS origins</em> alanına bu sayfanın adresini ekle.
+  </div>
+  <div id="client-id-row">
+    <input type="text" id="client-id-input" placeholder="Google OAuth Client ID (xxxx.apps.googleusercontent.com)" />
+    <button class="btn-primary" onclick="startAuth()">Giriş Yap</button>
+  </div>
+  <div id="auth-status" class="hidden" style="margin-top:8px;"></div>
+</div>
+
+<!-- STEP 2: Upload Images -->
+<div class="step-card" id="card-upload">
+  <div class="step-header">
+    <div class="step-num" id="num-upload">2</div>
+    <div>
+      <div class="step-title">Görsel Yükle</div>
+      <div class="step-sub">Drive'a yüklenecek ürün görselleri</div>
+    </div>
+  </div>
+  <div class="dropzone" id="img-drop" onclick="document.getElementById('img-input').click()"
+    ondragover="event.preventDefault();this.classList.add('over')"
+    ondragleave="this.classList.remove('over')"
+    ondrop="handleImgDrop(event)">
+    <input type="file" id="img-input" accept="image/*" multiple onchange="handleImgSelect(event)" />
+    <div class="dropzone-icon">🖼️</div>
+    <p><strong>Tıkla veya sürükle</strong> — JPG, PNG, WEBP</p>
+  </div>
+  <div id="preview-grid"></div>
+  <div class="row-btns">
+    <button class="btn-primary" id="upload-btn" onclick="uploadAllImages()" disabled>Drive'a Yükle</button>
+    <button class="btn-secondary" onclick="clearImages()">Temizle</button>
+  </div>
+  <div class="progress-bar-wrap hidden" id="upload-progress-wrap">
+    <div class="progress-bar-fill" id="upload-progress-fill"></div>
+  </div>
+  <div id="upload-status" style="margin-top:8px;font-family:sans-serif;font-size:0.85rem;color:var(--muted);"></div>
+  <div id="results-list"></div>
+</div>
+
+<!-- STEP 3: PDF -->
+<div class="step-card" id="card-pdf">
+  <div class="step-header">
+    <div class="step-num" id="num-pdf">3</div>
+    <div>
+      <div class="step-title">PDF'e Link & QR Ekle</div>
+      <div class="step-sub">PDF seç, linki yapıştır, indir</div>
+    </div>
+  </div>
+
+  <div class="dropzone" id="pdf-drop" onclick="document.getElementById('pdf-input').click()"
+    ondragover="event.preventDefault();this.classList.add('over')"
+    ondragleave="this.classList.remove('over')"
+    ondrop="handlePdfDrop(event)">
+    <input type="file" id="pdf-input" accept="application/pdf" onchange="handlePdfSelect(event)" />
+    <div class="dropzone-icon">📄</div>
+    <p id="pdf-drop-label"><strong>Tıkla veya sürükle</strong> — PDF dosyası</p>
+  </div>
+
+  <div id="pdf-config" class="hidden">
+    <hr />
+    <div style="font-family:sans-serif;font-size:0.88rem;font-weight:600;margin-bottom:0.6rem;">Link & QR Ayarları</div>
+
+    <div class="url-input-row">
+      <input type="text" id="url-input" placeholder="Drive linki (otomatik doldurulur veya manuel gir)" />
+      <button class="btn-secondary" onclick="previewQR()" style="white-space:nowrap;">QR Önizle</button>
+    </div>
+    <div id="qr-preview"></div>
+
+    <div style="font-family:sans-serif;font-size:0.88rem;font-weight:600;margin:0.75rem 0 0.5rem;">Pozisyon (PDF'in ilk sayfasında)</div>
+    <div class="config-row">
+      <label>Sayfa köşesi</label>
+      <select id="corner-select">
+        <option value="bottom-right">Sağ alt</option>
+        <option value="bottom-left">Sol alt</option>
+        <option value="top-right">Sağ üst</option>
+        <option value="top-left">Sol üst</option>
+        <option value="custom">Özel konum</option>
+      </select>
+    </div>
+    <div id="custom-pos" class="hidden">
+      <div class="config-row">
+        <label>X (soldan px)</label>
+        <input type="number" id="pos-x" value="400" min="0" />
+      </div>
+      <div class="config-row">
+        <label>Y (alttan px)</label>
+        <input type="number" id="pos-y" value="30" min="0" />
+      </div>
+    </div>
+    <div class="config-row">
+      <label>QR boyutu (px)</label>
+      <input type="number" id="qr-size" value="80" min="40" max="200" />
+    </div>
+    <div class="config-row">
+      <label>Hangi sayfalara</label>
+      <select id="page-select">
+        <option value="first">Sadece ilk sayfa</option>
+        <option value="all">Tüm sayfalar</option>
+        <option value="last">Sadece son sayfa</option>
+      </select>
+    </div>
+
+    <button class="btn-primary dl-btn" onclick="embedAndDownload()">📥 PDF'i İndir</button>
+    <div id="pdf-status" style="margin-top:8px;font-family:sans-serif;font-size:0.85rem;"></div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+let accessToken = null;
+let imageFiles = [];
+let uploadedLinks = [];
+let pdfBytes = null;
+let pdfFileName = 'output.pdf';
+
+// ---- AUTH ----
+function startAuth() {
+  const clientId = document.getElementById('client-id-input').value.trim();
+  if (!clientId) { alert('Client ID gir.'); return; }
+  localStorage.setItem('gClientId', clientId);
+  const redirectUri = window.location.href.split('?')[0].split('#')[0];
+  const scope = 'https://www.googleapis.com/auth/drive.file';
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(scope)}&prompt=consent`;
+  window.location.href = url;
+}
+
+function checkToken() {
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    const params = new URLSearchParams(hash.substring(1));
+    accessToken = params.get('access_token');
+    window.location.hash = '';
+    const storedId = localStorage.getItem('gClientId');
+    if (storedId) document.getElementById('client-id-input').value = storedId;
+    showAuthSuccess();
+  }
+}
+
+function showAuthSuccess() {
+  const box = document.getElementById('auth-status');
+  box.className = 'success-box';
+  box.textContent = '✓ Google Drive bağlantısı başarılı! Görselleri yükleyebilirsiniz.';
+  box.classList.remove('hidden');
+  document.getElementById('card-auth').classList.remove('active');
+  document.getElementById('card-auth').classList.add('done');
+  document.getElementById('num-auth').textContent = '✓';
+  document.getElementById('card-upload').classList.add('active');
+}
+
+// ---- IMAGES ----
+function handleImgDrop(e) {
+  e.preventDefault();
+  document.getElementById('img-drop').classList.remove('over');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  addImages(files);
+}
+function handleImgSelect(e) { addImages(Array.from(e.target.files)); }
+
+function addImages(files) {
+  imageFiles = imageFiles.concat(files);
+  renderPreviews();
+  document.getElementById('upload-btn').disabled = !accessToken || imageFiles.length === 0;
+}
+
+function renderPreviews() {
+  const grid = document.getElementById('preview-grid');
+  grid.innerHTML = '';
+  imageFiles.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'preview-thumb';
+    div.id = `thumb-${i}`;
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(f);
+    const badge = document.createElement('span');
+    badge.className = 'status-badge status-pending';
+    badge.textContent = 'bekliyor';
+    badge.id = `badge-${i}`;
+    div.appendChild(img);
+    div.appendChild(badge);
+    grid.appendChild(div);
+  });
+}
+
+function clearImages() {
+  imageFiles = [];
+  uploadedLinks = [];
+  document.getElementById('preview-grid').innerHTML = '';
+  document.getElementById('results-list').innerHTML = '';
+  document.getElementById('upload-btn').disabled = true;
+}
+
+async function uploadAllImages() {
+  if (!accessToken) { alert('Önce Google ile giriş yap.'); return; }
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  const progressWrap = document.getElementById('upload-progress-wrap');
+  const progressFill = document.getElementById('upload-progress-fill');
+  const status = document.getElementById('upload-status');
+  progressWrap.classList.remove('hidden');
+  uploadedLinks = [];
+  const resultsList = document.getElementById('results-list');
+  resultsList.innerHTML = '';
+
+  for (let i = 0; i < imageFiles.length; i++) {
+    setBadge(i, 'status-uploading', 'yükleniyor');
+    status.textContent = `Yükleniyor: ${i+1} / ${imageFiles.length}`;
+    progressFill.style.width = `${Math.round((i / imageFiles.length) * 100)}%`;
+    try {
+      const link = await uploadFileToDrive(imageFiles[i]);
+      uploadedLinks.push({ name: imageFiles[i].name, link, file: imageFiles[i] });
+      setBadge(i, 'status-done', 'tamam');
+      addResultItem(imageFiles[i], link, resultsList);
+    } catch(err) {
+      setBadge(i, 'status-error', 'hata');
+      uploadedLinks.push({ name: imageFiles[i].name, link: null, file: imageFiles[i] });
+    }
+    progressFill.style.width = `${Math.round(((i+1) / imageFiles.length) * 100)}%`;
+  }
+
+  status.textContent = `${uploadedLinks.filter(u=>u.link).length} / ${imageFiles.length} görsel başarıyla yüklendi.`;
+  btn.disabled = false;
+
+  if (uploadedLinks.filter(u=>u.link).length > 0 && uploadedLinks.length === 1) {
+    document.getElementById('url-input').value = uploadedLinks[0].link;
+    previewQR();
+  }
+
+  document.getElementById('card-upload').classList.add('done');
+  document.getElementById('num-upload').textContent = '✓';
+  document.getElementById('card-pdf').classList.add('active');
+}
+
+function setBadge(i, cls, txt) {
+  const b = document.getElementById(`badge-${i}`);
+  if (b) { b.className = `status-badge ${cls}`; b.textContent = txt; }
+}
+
+function addResultItem(file, link, container) {
+  const div = document.createElement('div');
+  div.className = 'result-item';
+  const img = document.createElement('img');
+  img.src = URL.createObjectURL(file);
+  const name = document.createElement('span');
+  name.className = 'result-name';
+  name.textContent = file.name;
+  const a = document.createElement('a');
+  a.className = 'result-link';
+  a.href = link;
+  a.target = '_blank';
+  a.textContent = 'Drive\'da Aç';
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'btn-secondary copy-btn';
+  copyBtn.textContent = 'Kopyala';
+  copyBtn.onclick = () => { navigator.clipboard.writeText(link); copyBtn.textContent = 'Kopyalandı!'; setTimeout(()=>copyBtn.textContent='Kopyala',2000); };
+  const useBtn = document.createElement('button');
+  useBtn.className = 'btn-primary copy-btn';
+  useBtn.textContent = 'PDF\'e Ekle';
+  useBtn.onclick = () => { document.getElementById('url-input').value = link; previewQR(); document.getElementById('card-pdf').scrollIntoView({behavior:'smooth'}); };
+  div.appendChild(img);
+  div.appendChild(name);
+  div.appendChild(a);
+  div.appendChild(copyBtn);
+  div.appendChild(useBtn);
+  container.appendChild(div);
+}
+
+async function uploadFileToDrive(file) {
+  const metadata = { name: file.name, mimeType: file.type };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', file);
+
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${accessToken}` },
+    body: form
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  const data = await res.json();
+  await makeFilePublic(data.id);
+  return `https://drive.google.com/file/d/${data.id}/view?usp=sharing`;
+}
+
+async function makeFilePublic(fileId) {
+  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' })
+  });
+}
+
+// ---- QR PREVIEW ----
+function previewQR() {
+  const url = document.getElementById('url-input').value.trim();
+  const container = document.getElementById('qr-preview');
+  container.innerHTML = '';
+  if (!url) return;
+  const wrap = document.createElement('div');
+  wrap.style.display = 'inline-block';
+  wrap.style.padding = '8px';
+  wrap.style.background = '#fff';
+  wrap.style.borderRadius = '6px';
+  wrap.style.border = '1px solid var(--border)';
+  container.appendChild(wrap);
+  new QRCode(wrap, { text: url, width: 80, height: 80 });
+  const label = document.createElement('p');
+  label.style.cssText = 'font-size:0.75rem;color:var(--muted);margin-top:4px;font-family:sans-serif;';
+  label.textContent = 'QR kod önizleme';
+  container.appendChild(label);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('corner-select').addEventListener('change', function() {
+    document.getElementById('custom-pos').classList.toggle('hidden', this.value !== 'custom');
+  });
+});
+
+// ---- PDF ----
+function handlePdfDrop(e) {
+  e.preventDefault();
+  document.getElementById('pdf-drop').classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') loadPdf(f);
+}
+function handlePdfSelect(e) { if (e.target.files[0]) loadPdf(e.target.files[0]); }
+
+async function loadPdf(file) {
+  pdfFileName = file.name.replace('.pdf', '') + '_linked.pdf';
+  const buf = await file.arrayBuffer();
+  pdfBytes = new Uint8Array(buf);
+  document.getElementById('pdf-drop-label').innerHTML = `<strong>${file.name}</strong> — yüklendi ✓`;
+  document.getElementById('pdf-config').classList.remove('hidden');
+
+  if (uploadedLinks.length === 1 && uploadedLinks[0].link) {
+    document.getElementById('url-input').value = uploadedLinks[0].link;
+    previewQR();
+  }
+}
+
+async function embedAndDownload() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) { alert('Önce bir Drive linki gir.'); return; }
+  if (!pdfBytes) { alert('PDF yükle.'); return; }
+  const status = document.getElementById('pdf-status');
+  status.style.color = 'var(--muted)';
+  status.textContent = 'İşleniyor…';
+
+  try {
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const pages = pdfDoc.getPages();
+    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const corner = document.getElementById('corner-select').value;
+    const qrSize = parseInt(document.getElementById('qr-size').value) || 80;
+    const pageTarget = document.getElementById('page-select').value;
+
+    const qrDataUrl = await generateQRDataURL(url, qrSize * 3);
+    const qrImgBytes = await fetch(qrDataUrl).then(r => r.arrayBuffer());
+    const qrImage = await pdfDoc.embedPng(qrImgBytes);
+
+    let targetPages = [];
+    if (pageTarget === 'first') targetPages = [pages[0]];
+    else if (pageTarget === 'last') targetPages = [pages[pages.length - 1]];
+    else targetPages = pages;
+
+    for (const page of targetPages) {
+      const { width, height } = page.getSize();
+      let x, y;
+      const margin = 16;
+      if (corner === 'custom') {
+        x = parseInt(document.getElementById('pos-x').value);
+        y = parseInt(document.getElementById('pos-y').value);
+      } else if (corner === 'bottom-right') { x = width - qrSize - margin; y = margin; }
+      else if (corner === 'bottom-left') { x = margin; y = margin; }
+      else if (corner === 'top-right') { x = width - qrSize - margin; y = height - qrSize - margin; }
+      else { x = margin; y = height - qrSize - margin; }
+
+      page.drawImage(qrImage, { x, y, width: qrSize, height: qrSize });
+
+      const linkText = url.length > 50 ? url.substring(0, 47) + '…' : url;
+      const fontSize = 6;
+      const textWidth = font.widthOfTextAtSize(linkText, fontSize);
+      let tx = x + (qrSize / 2) - (textWidth / 2);
+      let ty = y - 10;
+      if (ty < 4) ty = y + qrSize + 3;
+      page.drawText(linkText, { x: tx, y: ty, size: fontSize, font, color: rgb(0.3, 0.3, 0.3) });
+
+      const annot = pdfDoc.context.obj({
+        Type: 'Annot', Subtype: 'Link',
+        Rect: [x, y, x + qrSize, y + qrSize],
+        Border: [0, 0, 0],
+        A: { Type: 'Action', S: 'URI', URI: pdfDoc.context.obj(url) }
+      });
+      if (!page.node.get(pdfDoc.context.obj('Annots'))) {
+        page.node.set(pdfDoc.context.obj('Annots'), pdfDoc.context.obj([]));
+      }
+      try {
+        const annots = page.node.lookup(pdfDoc.context.obj('Annots'));
+        if (annots && annots.push) annots.push(pdfDoc.context.register(annot));
+      } catch(_) {}
+    }
+
+    const outBytes = await pdfDoc.save();
+    const blob = new Blob([outBytes], { type: 'application/pdf' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = pdfFileName;
+    a.click();
+    status.style.color = 'var(--success)';
+    status.textContent = `✓ ${pdfFileName} indirildi!`;
+    document.getElementById('card-pdf').classList.add('done');
+    document.getElementById('num-pdf').textContent = '✓';
+  } catch(err) {
+    console.error(err);
+    status.style.color = 'var(--accent)';
+    status.textContent = 'Hata: ' + err.message;
+  }
+}
+
+function generateQRDataURL(text, size) {
+  return new Promise((resolve) => {
+    const div = document.createElement('div');
+    div.style.display = 'none';
+    document.body.appendChild(div);
+    const qr = new QRCode(div, { text, width: size, height: size, correctLevel: QRCode.CorrectLevel.M });
+    setTimeout(() => {
+      const img = div.querySelector('img');
+      if (img && img.src) { resolve(img.src); }
+      else {
+        const canvas = div.querySelector('canvas');
+        resolve(canvas ? canvas.toDataURL('image/png') : '');
+      }
+      document.body.removeChild(div);
+    }, 200);
+  });
+}
+
+checkToken();
+</script>
+</body>
+</html>
