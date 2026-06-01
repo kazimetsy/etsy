@@ -1,0 +1,2 @@
+# etsy
+ürün hazırlama
